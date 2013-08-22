@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="RF.ParameterValue">
+<Description>
+Значение для определенного параметра, региона</Description>
+<Super>%Persistent,%XML.Adaptor</Super>
+<TimeCreated>63036,68595.557164</TimeCreated>
+
+<Property name="Region">
+<Type>RF.Region</Type>
+<Required>1</Required>
+<Parameter name="XMLREFERENCE" value="ID"/>
+</Property>
+
+<Property name="Parameter">
+<Type>RF.Parameter</Type>
+<Required>1</Required>
+<Parameter name="XMLREFERENCE" value="ID"/>
+</Property>
+
+<Property name="Value">
+<Type>%Float</Type>
+</Property>
+
+<Storage name="Default">
+<Type>%Library.CacheStorage</Type>
+<DataLocation>^RF.ParameterValueD</DataLocation>
+<DefaultData>ParameterValueDefaultData</DefaultData>
+<IdLocation>^RF.ParameterValueD</IdLocation>
+<IndexLocation>^RF.ParameterValueI</IndexLocation>
+<StreamLocation>^RF.ParameterValueS</StreamLocation>
+<ExtentSize>100000</ExtentSize>
+<Data name="ParameterValueDefaultData">
+<Value name="1">
+<Value>%%CLASSNAME</Value>
+</Value>
+<Value name="2">
+<Value>Region</Value>
+</Value>
+<Value name="3">
+<Value>Parameter</Value>
+</Value>
+<Value name="4">
+<Value>Value</Value>
+</Value>
+<Value name="5">
+<Value>RegionName</Value>
+</Value>
+</Data>
+</Storage>
+</Class>
+</Export>

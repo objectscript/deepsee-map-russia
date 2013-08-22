@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="RF.Borders">
+<Description>
+Границы для слайдера.
+Для каждого значения параметра свой набор границ.
+Два начальных уровня, ParentRegion is NULL</Description>
+<Super>%Persistent</Super>
+<TimeCreated>63036,80587.321024</TimeCreated>
+
+<Property name="ParentRegion">
+<Type>RF.Region</Type>
+</Property>
+
+<Property name="Parameter">
+<Type>RF.Parameter</Type>
+<Required>1</Required>
+</Property>
+
+<Property name="HLevel">
+<Type>%Integer</Type>
+</Property>
+
+<Property name="Minimum">
+<Type>%Integer</Type>
+</Property>
+
+<Property name="Maximum">
+<Type>%Integer</Type>
+</Property>
+
+<Method name="SetBorders">
+<Description>
+Обновить границы</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>paramId:%String,level:%Integer,parentRegionGuid:%String,min:%Integer,max:%Integer</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set id = ""
+	if (parentRegionGuid '= "")
+	{
+		&sql(SELECT ID INTO:id 
+		 	 FROM RF.Borders
+		 	 WHERE Parameter = :paramId AND ParentRegion->Guid = :parentRegionGuid AND HLevel = :level)
+	}
+	else
+	{
+		 &sql(SELECT ID INTO:id 
+		 	  FROM RF.Borders
+		 	  WHERE Parameter = :paramId AND ParentRegion IS NULL AND HLevel = :level)
+	}
+
+	set brd = ##class(RF.Borders).%OpenId(id,,.st)
+	quit:(st '= 1) 0
+	
+	set brd.Maximum = max
+	set brd.Minimum = min
+	set st = brd.%Save()
+	
+	quit st
+]]></Implementation>
+</Method>
+
+<Method name="GetBorders">
+<Description>
+Получить границы для набора полигонов, у которых родитель с GUID = parentRegionGuid</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>paramId:%String,hLevel:%Integer,parentRegionGuid:%String</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	set borderMax = "0"
+	set borderMin = "0"
+	set unitName = "-"
+
+	if (parentRegionGuid '= "")
+	{
+		&sql(SELECT Maximum, Minimum, Parameter->UnitName INTO:borderMax, :borderMin, :unitName
+			 FROM RF.Borders
+		 	 WHERE Parameter = :paramId AND ParentRegion->Guid = :parentRegionGuid AND HLevel = :hLevel)
+	}
+	else
+	{
+		&sql(SELECT Maximum, Minimum, Parameter->UnitName INTO:borderMax, :borderMin, :unitName
+			 FROM RF.Borders
+		 	 WHERE Parameter = :paramId AND ParentRegion IS NULL AND HLevel = :hLevel)
+	}
+		
+	quit borderMin_";"_borderMax_";"_unitName
+]]></Implementation>
+</Method>
+
+<Method name="CreateBorders">
+<Description>
+Создать набор границ для параметра, для уровня - потомки parentGuid ("" - стартовый уровень)</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>level:%Integer,parameterId:%Integer,parentGuid:%String=""</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set borders = ..%New()
+	
+	// Границы для начальных уровней
+	if (parentGuid = "")
+	{
+		&sql(SELECT MIN(Value), MAX(Value) INTO :min,:max 
+	         FROM RF.ParameterValue 
+	         WHERE Region->HLevel = :level AND Parameter = :parameterId)
+	}
+	else
+	{
+		&sql(SELECT MIN(Value), MAX(Value) INTO :min,:max 
+	         FROM RF.ParameterValue 
+	         WHERE Region->HLevel = :level AND Parameter = :parameterId AND Region->ParentGuid = :parentGuid)
+	         
+	    set borders.ParentRegion = ##class(RF.Region).GuidIndexOpen(parentGuid,,.sc)
+	}
+	
+	set borders.Minimum = min
+	set borders.Maximum = max
+ 	set borders.Parameter = ##class(RF.Parameter).%OpenId(parameterId)
+ 	set borders.HLevel = level
+ 	quit borders.%Save()
+]]></Implementation>
+</Method>
+
+<Method name="Populate">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	do ..%KillExtent()
+	
+	set createdCount = 0
+	
+	&sql(DECLARE ParamCur CURSOR FOR 
+		 SELECT ID 
+		 FROM RF.Parameter)	
+		 
+	&sql(OPEN ParamCur)
+	for  
+	{
+		&sql(FETCH ParamCur INTO :paramId) 
+		quit:(SQLCODE '= 0)
+		
+		// Начальные уровни - 0 и 1
+		set st = ..CreateBorders(0, paramId)
+		set st = st_..CreateBorders(1, paramId)
+	    
+	    if (st '= "11")
+	    {
+		    write !,"Ошибка при сохранении границ для начального уровня, "_st
+		    return 0
+	    }
+	    
+	    set createdCount = createdCount + 2
+	    
+	    // Для всех остальных
+		&sql(DECLARE BrdCur CURSOR FOR 
+			 SELECT DISTINCT ParentGuid, ParentGuid->HLevel
+			 FROM RF.Region
+			 WHERE PolygonStrokeOpacity <> 0)	
+		 
+		&sql(OPEN BrdCur)
+		for  
+		{
+			&sql(FETCH BrdCur INTO :guid, :level) 
+			quit:(SQLCODE '= 0)
+			
+			if (level = 0)
+			{
+				set st = ..CreateBorders(1, paramId, guid)
+			}
+			elseif (level = 1)
+			{
+				set st = ..CreateBorders(2, paramId, guid)
+			}
+			elseif (level = 2)
+			{
+				set st = ..CreateBorders(3, paramId, guid)
+			}
+			
+			if (st '= 1)
+	   		{
+		    	write !,"Ошибка при сохранении границ для уровня, "_st
+		    	return 0
+	    	}
+	    	
+	    	set createdCount = createdCount + 1
+		}
+		&sql(CLOSE BrdCur)
+	}
+	&sql(CLOSE ParamCur)
+	
+	write !,"Создано "_createdCount_" объектов класса "_..%ClassName(1)
+	quit $$$OK
+]]></Implementation>
+</Method>
+
+<Storage name="Default">
+<Type>%Library.CacheStorage</Type>
+<DataLocation>^RF.BordersD</DataLocation>
+<DefaultData>BordersDefaultData</DefaultData>
+<IdLocation>^RF.BordersD</IdLocation>
+<IndexLocation>^RF.BordersI</IndexLocation>
+<StreamLocation>^RF.BordersS</StreamLocation>
+<ExtentSize>100000</ExtentSize>
+<Data name="BordersDefaultData">
+<Value name="1">
+<Value>%%CLASSNAME</Value>
+</Value>
+<Value name="2">
+<Value>ParentRegion</Value>
+</Value>
+<Value name="3">
+<Value>Parameter</Value>
+</Value>
+<Value name="4">
+<Value>HLevel</Value>
+</Value>
+<Value name="5">
+<Value>Minimum</Value>
+</Value>
+<Value name="6">
+<Value>Maximum</Value>
+</Value>
+<Value name="7">
+<Value>StartLevel</Value>
+</Value>
+<Value name="8">
+<Value>ParentRegionName</Value>
+</Value>
+</Data>
+</Storage>
+</Class>
+</Export>

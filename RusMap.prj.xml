@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Project name="RusMap" LastModified="2013-08-22 15:13:33.436773">
+  <Items>
+    <ProjectItem name="RF.Borders" type="CLS"></ProjectItem>
+    <ProjectItem name="RF.MapKPI" type="CLS"></ProjectItem>
+    <ProjectItem name="RF.MapPortlet" type="CLS"></ProjectItem>
+    <ProjectItem name="RF.Parameter" type="CLS"></ProjectItem>
+    <ProjectItem name="RF.ParameterValue" type="CLS"></ProjectItem>
+    <ProjectItem name="RF.Region" type="CLS"></ProjectItem>
+    <ProjectItem name="RF.Utils" type="CLS"></ProjectItem>
+    <ProjectItem name="RFDashboards-RFMap.dashboard.DFI" type="DFI"></ProjectItem>
+    <ProjectItem name="csp/rus_map/polygonsRussia.js" type="CSP"></ProjectItem>
+  </Items>
+</Project>
+</Export>

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="RF.MapKPI">
+<Description>
+RF.MapKPI</Description>
+<Super>%DeepSee.KPI</Super>
+<TimeCreated>63007,48364.673572</TimeCreated>
+
+<Parameter name="DOMAIN">
+</Parameter>
+
+<Parameter name="RESOURCE">
+</Parameter>
+
+<XData name="KPI">
+<Description>
+Этот блок XData содержит определение KPI</Description>
+<XMLNamespace>http://www.intersystems.com/deepsee/kpi</XMLNamespace>
+<Data><![CDATA[
+<kpi xmlns="http://www.intersystems.com/deepsee/kpi" name="RFMapKPI" sourceType="sql" caption="RFMapKPI" sql="" >
+ 
+<property name="Name" columnNo="1"/>
+<property name="Guid" columnNo="2"/>
+<property name="Level" columnNo="3"/>
+<property name="Latitude" columnNo="4"/>
+<property name="Longitude" columnNo="5"/>
+<property name="DefaultZoom" columnNo="6"/>
+<property name="CanDrillDown" columnNo="7"/>
+<property name="CenterName" columnNo="8"/>
+<property name="SpecialIcon" columnNo="9"/>
+<property name="PolygonStrokeOpacity" columnNo="10"/>
+<property name="Value" columnNo="11"/>
+<property name="ParameterId" columnNo="12"/>
+
+<filter name="StartLevel" displayList="Федеральные округа,Субъекты федерации" valueList="0,1" defaultValue="0"/>
+<filter name="ParentGuid"/>
+<filter name="ParameterName" sql="SELECT Name FROM RF.Parameter" defaultValue="0"/>
+
+</kpi>
+]]></Data>
+</XData>
+
+<Method name="%OnGetSQL">
+<Description>
+Return an SQL statement to execute.</Description>
+<FormalSpec><![CDATA[&pSQL:%String]]></FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	
+	set startLevel = ..%filterValues.StartLevel
+	set parentGuid = ..%filterValues.ParentGuid
+	set whereCondition = ""
+			
+	if (startLevel = 0) && (parentGuid = "")
+	{
+		// Начальный уровень: Федеральные округа
+		set whereCondition = "pv.Region->HLevel = 0"
+	}
+	elseif (parentGuid = "")
+	{
+		// Начальный уровень: Субъекты федерации
+		set whereCondition = "pv.Region->HLevel = 1"
+	}
+	else
+	{
+		// Углубление в регион
+		set whereCondition = "pv.Region->ParentGuid = '"_parentGuid_"'"
+	}
+	
+	set pSQL = ..GetStringFromXData("sqlRF")		
+	set pSQL = $replace(pSQL, ":WHERECondition", whereCondition_" AND pv.Parameter->Name = '"_..%filterValues.ParameterName_"'")	
+	
+	Quit $$$OK
+]]></Implementation>
+</Method>
+
+<XData name="sqlRF">
+<Data><![CDATA[
+<xml><![CDATA[
+SELECT pv.Region->Name As Name,
+       pv.Region->Guid As Guid,
+       pv.Region->HLevel As "Level",
+ 	   pv.Region->Latitude As Latitude,
+	   pv.Region->Longitude As Longitude,
+	   pv.Region->DefaultZoom As DefaultZoom,
+	   pv.Region->CanDrillDown As CanDrillDown,
+	   pv.Region->CenterName As CenterName,
+	   pv.Region->SpecialIcon As SpecialIcon,
+	   pv.Region->PolygonStrokeOpacity As PolygonStrokeOpacity,
+	   pv.Value As Value,
+	   pv.Parameter As ParameterId
+FROM RF.ParameterValue as pv
+WHERE :WHERECondition
+]]]]><![CDATA[></xml>
+]]></Data>
+</XData>
+
+<Method name="GetStringFromXData">
+<Description>
+Извлечение SQL-запроса из блока XData с указанным именем</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>name:%String</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	#dim sc As %Status
+	#dim result As %String = ""
+	
+	#dim xdata As %Persistent = ##class(%Dictionary.CompiledXData).%OpenId(..%ClassName(1) _ "||" _ name,, .sc)
+	if $$$ISOK(sc) && $isObject(xdata)
+	{
+		#dim node As %XML.TextReader
+		set sc = ##class(%XML.TextReader).ParseStream(xdata.Data, .node)
+		if $$$ISOK(sc)
+		{
+			do node.MoveToContent()
+			while (node.NodeType '= "chars") && (node.NodeType '= "cdata") && node.Read() {}
+			
+			if (node.NodeType = "chars") || (node.NodeType = "cdata") set result = node.Value
+		}
+	}	
+	
+	quit result
+]]></Implementation>
+</Method>
+</Class>
+</Export>

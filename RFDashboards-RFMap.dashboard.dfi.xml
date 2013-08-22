@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Document name="RFDashboards-RFMap.dashboard.DFI">
+<dashboard xmlns="http://www.intersystems.com/deepsee/library" name="RFMap" folderName="RFDashboards" title="" description="" keywords="" owner="" shared="true" public="true" locked="false" resource="" timeCreated="2013-07-04T05:29:56.446Z" createdBy="ilson" category="" bookCover="" scheme="" worklistCount="0" snapTo="true" snapGrid="true" gridRows="10" gridCols="10" canResize="true" canModify="true" showTitleBar="true" companyName="" companyLogo="" companyStyle="">
+  <widget name="MapW" type="portlet" subtype="RF.MapPortlet" subtypeClass="" title="" dataSource="RFMapKPI.kpi" dataLink="" drillDownDataSource="" width="200" height="200" sidebarContent="" showSidebar="false" sidebarWidth="" maximized="false" homeRowL="0" homeColL="0" colSpanL="10" rowSpanL="10" showToolbar="true" theme="" dataColorList="">
+    <control name="" action="applyFilter" target="" targetProperty="ParentGuid" location="widget" type="hidden" controlClass="" label="ParentGuid" title="" value="" text="" readOnly="false" valueList="" displayList="" activeWhen=""></control>
+    <control name="" action="applyFilter" target="" targetProperty="StartLevel" location="widget" type="dropdown" controlClass="" label="Начальный уровень" title="" value="0" text="" readOnly="false" valueList="0,1" displayList="Федеральные округа,Субъекты федерации" activeWhen=""></control>
+    <control name="" action="applyFilter" target="" targetProperty="ParameterName" location="widget" type="dropdown" controlClass="" label="Параметр" title="" value="Население" text="" readOnly="false" valueList="" displayList="" activeWhen=""></control>
+    <property name="colorProperty"></property>
+    <property name="coordsJsFile">polygonsRussia.js</property>
+    <property name="coordsProperty">Guid</property>
+    <property name="fillOpacity">0.6</property>
+    <property name="hoverOpacity">0.5</property>
+    <property name="latitude">60</property>
+    <property name="latitudeProperty">Latitude</property>
+    <property name="longitude">93</property>
+    <property name="longitudeProperty">Longitude</property>
+    <property name="markerDataProperties">Name,Guid,DefaultZoom,CanDrillDown,Value,ParameterId,Level,CenterName,SpecialIcon</property>
+    <property name="markerIcon">http://i.imgur.com/pBB7MYT.png</property>
+    <property name="markerSpecialIcon">http://i.imgur.com/bFJRQfv.png</property>
+    <property name="markerSpecialProperty">SpecialIcon</property>
+    <property name="markerTitleProperty">Name</property>
+    <property name="onclickmarker"><![CDATA[
+    	if (marker.data.CanDrillDown == 1) 
+   		{ 
+   			for (var n = 0; n < zenThis._polygons.length; n++) 
+			{
+				var poly = zenThis._polygons[n];
+				if (poly.data.Guid == marker.data.Guid)
+				{
+					zenInvokeCallbackMethod(zenThis.onclickpolygon,zenThis,'onclickpolygon','polygon',poly,'position', marker.position);
+				}
+			} 
+   		} 
+   		else 
+   		{ 
+			zenInvokeCallbackMethod(zenThis.onrightclickpolygon,zenThis,'onrightclickpolygon','polygon', {data: marker.data},'position', marker.position);
+		}
+    ]]></property>
+    <property name="onclickpolygon"><![CDATA[    	
+    if(!zenThis.lastPolygon)     		
+        zenThis.lastPolygon=[];    	 				  		
+     
+     zenThis.drillDown(polygon.data.Name, position, polygon.data.DefaultZoom, {Guid: polygon.data.Guid, Level: polygon.data.Level});   		  		
+     
+     if (zenThis.lastPolygon.length > 0)
+     {
+		 zenThis.lastPolygon[zenThis.lastPolygon.length - 1].setVisible(false);
+     }
+      		    	
+     zenThis.currPolygon = new google.maps.Polygon({zIndex: 99, fillOpacity: 0.01, strokeColor: 'rgb(0,0,0)', strokeOpacity: polygon.data.PolygonStrokeOpacity, paths: polygon.getPaths(), clickable: false, map: zenThis.getMapObject()});    	
+     zenThis.lastPolygon.push(zenThis.currPolygon);    
+    ]]></property>
+    <property name="ondrilldown">
+   		if(!zenThis.lastGuid)
+   		{ 
+    		zenThis.lastGuid = [];
+    		zenThis.lastLevel = [];
+    		zenThis.currGuid = '';
+    		zenThis.currName = '';
+    		zenThis.currLevel = '';
+   		}
+   		
+   		zenThis.lastLevel.push(zenThis.currLevel);  
+   		zenThis.lastGuid.push(zenThis.currGuid);
+   		
+   		zenThis.currLevel = data.Level;
+   		zenThis.currGuid = data.Guid;
+   		
+   		zenThis._sliderRangeData.currGuid = data.Guid;
+   		zenPage.dashboardEventHandler(zenThis,'click', zenThis.currGuid, 'applyFilter', '*', 'ParentGuid');  		 
+   	</property>
+    <property name="ondrillup"><![CDATA[	
+    	if (zenThis.lastGuid)  
+		{  
+			zenThis.currGuid = zenThis.lastGuid.pop();
+			zenThis.currLevel = zenThis.lastLevel.pop();
+  			zenThis.currPolygon = zenThis.lastPolygon.pop();
+  			
+			zenThis._sliderRangeData.currGuid = zenThis.currGuid;
+			zenPage.dashboardEventHandler(zenThis,'click', zenThis.currGuid, 'applyFilter', '*', 'ParentGuid');          
+	
+	  		if (zenThis.lastPolygon.length > 0)
+            {
+		        zenThis.lastPolygon[zenThis.lastPolygon.length - 1].setVisible(true);
+            }
+            
+			if (zenThis.currPolygon)          
+				zenThis.currPolygon.setMap(null);
+		}
+	]]></property>
+    <property name="onrightclickmarker">
+     zenInvokeCallbackMethod(zenThis.onrightclickpolygon,zenThis,'onrightclickpolygon','polygon', {data: marker.data},'position', marker.position);
+    </property>
+    <property name="onrightclickpolygon"><![CDATA[ var content = '<div style="font-size: 12px;"><b>' + polygon.data.Name + '</b><br/>';    content += polygon.data.CenterName ? '<br/>Административный центр: ' + polygon.data.CenterName + '<br/>' : '';    content += zenThis.beatNumber(zenThis.GetParametersDataForInfoWindow(polygon.data.Guid)) + '</div>';        zenThis.openInfoWindowAtPosition(position, content);    ]]></property>
+    <property name="polygonDataProperties">Name,Guid,DefaultZoom,CanDrillDown,Value,PolygonStrokeOpacity,ParameterId,Level,CenterName</property>
+    <property name="polygonTitleProperty">Name</property>
+    <property name="strokeOpacity">1</property>
+    <property name="strokeWeight">1</property>
+    <property name="zoom">3</property>
+  </widget>
+</dashboard>
+</Document></Export>
